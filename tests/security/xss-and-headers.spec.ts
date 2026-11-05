@@ -45,3 +45,13 @@ test('live site security headers', async ({ request, baseURL }) => {
   console.log('SECURITY_HEADERS ' + JSON.stringify(report));
   expect(h['strict-transport-security'], 'HTTPS enforced').toBeTruthy();
 });
+
+test('security.txt: served with a contact and an expiry in the future (RFC 9116)', async ({ request }) => {
+  const r = await request.get('/.well-known/security.txt');
+  expect(r.status()).toBe(200);
+  const body = await r.text();
+  expect(body).toMatch(/^Contact: https:\/\/\S+$/m);
+  const exp = /^Expires: (\S+)$/m.exec(body);
+  expect(exp, 'Expires line').toBeTruthy();
+  expect(Date.parse(exp![1])).toBeGreaterThan(Date.now());
+});
