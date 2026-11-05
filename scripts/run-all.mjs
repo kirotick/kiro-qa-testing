@@ -22,6 +22,7 @@ fs.mkdirSync(path.join(qa, 'artifacts'), { recursive: true });
 for (const [f, b] of Object.entries(keep)) fs.writeFileSync(path.join(qa, 'artifacts', f), b);
 const steps = [
   run('Unit tests of every sub-project', 'node', ['scripts/run-unit.mjs']),
+  run('Shared GST cases: POS engine and server give the same totals', 'node', ['--test', '--test-reporter=spec', 'tests/gst-vectors.test.mjs']),
   run('Security scan', 'node', ['scripts/security.mjs']),
   run('Browser tests in Chromium: screens, POS, shop, motion, responsive, accessibility, visual, XSS', 'npx',
     ['playwright', 'test', '--project=chromium', 'tests/e2e', 'tests/motion', 'tests/responsive', 'tests/accessibility', 'tests/visual', 'tests/security']),

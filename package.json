@@ -22,7 +22,8 @@
     "qa:load": "node load/run-load.mjs",
     "qa:live": "cross-env-shell QA_BASE_URL=https://kiro-pos.netlify.app playwright test --project=chromium tests/e2e/screens.spec.ts tests/security",
     "qa:report": "node scripts/report.mjs",
-    "qa:serve": "node scripts/serve.mjs"
+    "qa:serve": "node scripts/serve.mjs",
+    "qa:gst": "node --test --test-reporter=spec tests/gst-vectors.test.mjs"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.10.2",
