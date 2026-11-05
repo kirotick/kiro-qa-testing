@@ -28,6 +28,6 @@
     "@axe-core/playwright": "^4.10.2",
     "@playwright/test": "^1.56.1",
     "cross-env": "^7.0.3",
-    "esbuild": "^0.25.11"
+    "esbuild": "^0.28.2"
   }
 }
