@@ -71,6 +71,7 @@ test('paid bill survives a page refresh (saved on the device)', async ({ page })
   await page.locator('[data-act="toCollect"]').click();
   await page.locator('[data-act="payMethod"][data-arg="card"]').click();
   await page.getByRole('button', { name: /received|paid|confirm/i }).first().click();
+  await expect(page.getByText('collected')).toBeVisible(); // saved before the reload, not racing it
   await page.reload();
   await expect(page.getByText('Today’s sales')).toBeVisible();
   await expect(page.getByText(/^1 bill$/).first()).toBeVisible();

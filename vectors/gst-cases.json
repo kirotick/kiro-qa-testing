@@ -1,0 +1,14 @@
+{
+  "about": "Shared GST cases (G-16). Prices include GST (the server's rule: items.price_paise is 'GST INCLUDED'). Each case is run through the POS engine (kiro-pos, KiroEngine.computeBill with pricesIncludeTax, no round-to-rupee) and the server (kiro-database create_sale). Amounts in paise. 'expect' values were worked out by hand: tax inside a price = price x rate / (100 + rate), CGST = SGST = half.",
+  "cases": [
+    { "id": "one-5pct", "lines": [{ "pricePaise": 10500, "qty": 1, "gstPct": 5 }], "discountPaise": 0, "expect": { "totalPaise": 10500, "taxPaise": 500, "cgstPaise": 250, "sgstPaise": 250 } },
+    { "id": "one-18pct", "lines": [{ "pricePaise": 11800, "qty": 2, "gstPct": 18 }], "discountPaise": 0, "expect": { "totalPaise": 23600, "taxPaise": 3600, "cgstPaise": 1800, "sgstPaise": 1800 } },
+    { "id": "one-12pct", "lines": [{ "pricePaise": 11200, "qty": 1, "gstPct": 12 }], "discountPaise": 0, "expect": { "totalPaise": 11200, "taxPaise": 1200, "cgstPaise": 600, "sgstPaise": 600 } },
+    { "id": "zero-rated", "lines": [{ "pricePaise": 4000, "qty": 3, "gstPct": 0 }], "discountPaise": 0, "expect": { "totalPaise": 12000, "taxPaise": 0, "cgstPaise": 0, "sgstPaise": 0 } },
+    { "id": "mixed-rates", "lines": [{ "pricePaise": 10500, "qty": 1, "gstPct": 5 }, { "pricePaise": 11800, "qty": 1, "gstPct": 18 }], "discountPaise": 0, "expect": { "totalPaise": 22300, "taxPaise": 2300, "cgstPaise": 1150, "sgstPaise": 1150 } },
+    { "id": "discount-shared", "lines": [{ "pricePaise": 10500, "qty": 2, "gstPct": 5 }], "discountPaise": 2100, "expect": { "totalPaise": 18900, "taxPaise": 900, "cgstPaise": 450, "sgstPaise": 450 } },
+    { "id": "odd-paise", "lines": [{ "pricePaise": 4000, "qty": 1, "gstPct": 5 }], "discountPaise": 0, "expect": { "totalPaise": 4000 } },
+    { "id": "odd-paise-two-items", "lines": [{ "pricePaise": 4000, "qty": 1, "gstPct": 5 }, { "pricePaise": 5500, "qty": 1, "gstPct": 5 }], "discountPaise": 0, "expect": { "totalPaise": 9500 } },
+    { "id": "odd-discount-mixed", "lines": [{ "pricePaise": 9999, "qty": 1, "gstPct": 18 }, { "pricePaise": 333, "qty": 3, "gstPct": 5 }], "discountPaise": 777, "expect": { "totalPaise": 10221 } }
+  ]
+}
