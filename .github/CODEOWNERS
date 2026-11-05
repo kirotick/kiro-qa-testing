@@ -1,0 +1,5 @@
+# Code owners: their review is requested automatically on changes to these paths.
+* @kirotick
+/scripts/ @kirotick
+/playwright.config.ts @kirotick
+/.github/ @kirotick

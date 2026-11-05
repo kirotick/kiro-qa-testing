@@ -1,17 +1,17 @@
-// Runs the existing Node test suites of every sub-project and saves the counts to artifacts/unit.json.
+// Runs the Node test suites of every KIRO repository in the workspace and saves the counts to artifacts/unit.json.
+// A repository that is not checked out next to this one is reported as "not checked out", never as passed.
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { QA as qa, WORKSPACE as repo } from './workspace.mjs';
 
-const qa = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const repo = path.resolve(qa, '..');
 const PROJECTS = [
-  { dir: 'server/node', name: 'API server (Express + PostgreSQL)', note: 'real-PostgreSQL and HTTP API tests run when TEST_DATABASE_URL (Neon "qa" branch) is set, else they skip' },
-  { dir: 'admin-app', name: 'Admin app logic (Expo)' },
-  { dir: 'ai-relay', name: 'AI relay (Cloudflare Worker)' },
-  { dir: 'erp-validator', name: 'ERP validator' },
-  { dir: 'desktop-saree', name: 'Saree desktop app (Electron)' },
+  { dir: 'kiro-backend/api', name: 'Core API (Express + PostgreSQL)', install: true, note: 'real-PostgreSQL and HTTP API tests run when TEST_DATABASE_URL (Neon "qa" branch) is set, else they skip' },
+  { dir: 'kiro-payments/service/node', name: 'KIRO PAY service (payments disabled)', install: true },
+  { dir: 'kiro-database', name: 'Database migrations', install: true },
+  { dir: 'kiro-mobile', name: 'Admin app logic (Expo)' },
+  { dir: 'kiro-backend/ai-relay', name: 'AI relay (Cloudflare Worker)' },
+  { dir: 'kiro-backend/packages/erp-validator', name: 'ERP validator' },
 ];
 
 // qa/.env (git-ignored) may hold TEST_DATABASE_URL: the Neon "qa" branch. With it, the server's
@@ -25,10 +25,11 @@ console.log(process.env.TEST_DATABASE_URL ? '(real-PostgreSQL tests: on, using T
 
 const results = [];
 for (const p of PROJECTS) {
+  if (!fs.existsSync(path.join(repo, p.dir))) { results.push({ ...p, status: 'not-tested', reason: 'repository not checked out next to kiro-qa-testing' }); console.log(`- ${p.dir}: NOT CHECKED OUT`); continue; }
   const testDir = path.join(repo, p.dir, 'test');
   const files = fs.existsSync(testDir) ? fs.readdirSync(testDir).filter((f) => f.endsWith('.test.js')).map((f) => path.join(testDir, f)) : [];
   if (!files.length) { results.push({ ...p, status: 'not-tested', reason: 'no test files in test/' }); console.log(`- ${p.dir}: NO TESTS`); continue; }
-  if (p.dir === 'server/node' && !fs.existsSync(path.join(repo, p.dir, 'node_modules'))) {
+  if (p.install && !fs.existsSync(path.join(repo, p.dir, 'node_modules'))) {
     spawnSync('npm', ['ci', '--no-audit', '--no-fund'], { cwd: path.join(repo, p.dir), stdio: 'inherit', shell: true });
   }
   // One file at a time: the database tests share one test database.

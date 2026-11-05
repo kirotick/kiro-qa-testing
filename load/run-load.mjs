@@ -5,23 +5,21 @@ import { spawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { fileURLToPath } from 'node:url';
+import { QA as qa, repo as repoOf } from '../scripts/workspace.mjs';
 
-const qa = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const repo = path.resolve(qa, '..');
+const API = path.join(repoOf('kiro-backend'), 'api'); // the core API from kiro-backend, checked out next to this repo
 const readEnv = (f, k) => { try { return (fs.readFileSync(f, 'utf8').match(new RegExp(`^${k}=(.+)$`, 'm')) || [])[1]?.trim(); } catch { return undefined; } };
 const testUrl = process.env.TEST_DATABASE_URL || readEnv(path.join(qa, '.env'), 'TEST_DATABASE_URL');
-const prodUrl = readEnv(path.join(repo, 'server/node/.env'), 'DATABASE_URL');
+const prodUrl = readEnv(path.join(API, '.env'), 'DATABASE_URL');
 if (!testUrl) { console.error('TEST_DATABASE_URL is not set (qa/.env): load test not run'); process.exit(1); }
 if (prodUrl && testUrl === prodUrl) { console.error('TEST_DATABASE_URL equals the production DATABASE_URL: refusing'); process.exit(1); }
 const k6 = ['k6', 'C:\\Program Files\\k6\\k6.exe'].find((c) => spawnSync(c, ['version']).status === 0);
 if (!k6) { console.error('k6 is not installed (winget install GrafanaLabs.k6): load test not run'); process.exit(1); }
 
 const PORT = 3999;
-const env = { ...process.env, DATABASE_URL: testUrl, PORT: String(PORT), NODE_ENV: 'test', JWT_SECRET: crypto.randomBytes(32).toString('hex'),
-  PHONEPE_KEK: crypto.randomBytes(32).toString('base64'), PHONEPE_BASE_URL: 'https://phonepe.invalid', PUBLIC_BASE_URL: 'https://api.kiro.test' };
+const env = { ...process.env, DATABASE_URL: testUrl, PORT: String(PORT), NODE_ENV: 'test', JWT_SECRET: crypto.randomBytes(32).toString('hex') };
 for (const k of ['WA_TOKEN', 'WA_PHONE_NUMBER_ID', 'WA_TEMPLATE', 'AI_API_KEY']) delete env[k]; // no messages, no AI calls
-const server = spawn(process.execPath, ['src/server.js'], { cwd: path.join(repo, 'server/node'), env, stdio: ['ignore', 'pipe', 'pipe'] });
+const server = spawn(process.execPath, ['src/server.js'], { cwd: API, env, stdio: ['ignore', 'pipe', 'pipe'] });
 server.stderr.on('data', (d) => process.stderr.write('[api] ' + d));
 const stop = () => { try { server.kill(); } catch {} };
 process.on('exit', stop);

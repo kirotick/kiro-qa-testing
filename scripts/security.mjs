@@ -4,13 +4,14 @@
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { QA as qa, WORKSPACE as repo, REPOS, repo as repoDir } from './workspace.mjs';
 
-const qa = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const repo = path.resolve(qa, '..');
+// Scans every KIRO repository checked out in the workspace (paths below are "<repo>/<file>").
 const findings = [];
 const add = (severity, area, title, detail, fix) => findings.push({ severity, area, title, detail, fix });
-const git = (...a) => spawnSync('git', a, { cwd: repo, encoding: 'utf8' }).stdout || '';
+const present = REPOS.filter((r) => fs.existsSync(path.join(repoDir(r), '.git')));
+const gitIn = (r, ...a) => spawnSync('git', a, { cwd: repoDir(r), encoding: 'utf8' }).stdout || '';
+const git = () => present.flatMap((r) => gitIn(r, 'ls-files').split('\n').filter(Boolean).map((f) => `${path.relative(repo, repoDir(r)).replace(/\\/g, '/')}/${f}`)).join('\n');
 
 // 1. Secrets committed to git (current files and history).
 const SECRET = [
@@ -30,13 +31,16 @@ for (const f of files) {
   for (const [name, re] of SECRET) { const m = t.match(re); if (m && !/test|example|fake|dummy/i.test(f)) add('P0', 'secrets', `${name} committed`, `${f}: ${m[0].slice(0, 12)}…`, 'Revoke the key, remove it from git history, store it in Netlify/Render environment variables.'); }
 }
 for (const f of files) if (/(^|\/)\.env$|\.pem$|id_rsa/.test(f)) add('P0', 'secrets', 'secret file committed', f, 'Remove from git and add to .gitignore.');
-const hist = spawnSync('git', ['log', '-p', '--all', '-G', 'BEGIN (RSA |EC |)PRIVATE KEY|AKIA[0-9A-Z]{16}|gh[pousr]_[A-Za-z0-9]{36}', '--format=%h'], { cwd: repo, encoding: 'utf8' }).stdout;
-if (hist && hist.trim()) add('P1', 'secrets', 'secret-like text in git history', hist.trim().split('\n').slice(0, 3).join(' '), 'Rotate the secret; rewrite history if it was real.');
+for (const rp of present) {
+  const hist = spawnSync('git', ['log', '-p', '--all', '-G', 'BEGIN (RSA |EC |)PRIVATE KEY|AKIA[0-9A-Z]{16}|gh[pousr]_[A-Za-z0-9]{36}', '--format=%h'], { cwd: repoDir(rp), encoding: 'utf8' }).stdout;
+  if (hist && hist.trim()) add('P1', 'secrets', `secret-like text in git history of ${rp}`, hist.trim().split('\n').slice(0, 3).join(' '), 'Rotate the secret; rewrite history if it was real.');
+}
 
-// 2. Known vulnerabilities in installed packages.
-for (const dir of ['server/node', 'qa']) {
+// 2. Known vulnerabilities in installed packages (production dependencies of the services, all of QA).
+for (const dir of ['kiro-backend/api', 'kiro-payments/service/node', 'kiro-database', 'kiro-qa-testing']) {
+  if (!fs.existsSync(path.join(repo, dir))) continue;
   if (!fs.existsSync(path.join(repo, dir, 'package-lock.json'))) { add('P3', 'dependencies', `no lockfile in ${dir}`, 'npm audit needs package-lock.json', 'Run npm install there and commit package-lock.json.'); continue; }
-  const r = spawnSync('npm', ['audit', '--json', dir === 'server/node' ? '--omit=dev' : ''], { cwd: path.join(repo, dir), encoding: 'utf8', shell: true });
+  const r = spawnSync('npm', ['audit', '--json', dir === 'kiro-qa-testing' ? '' : '--omit=dev'], { cwd: path.join(repo, dir), encoding: 'utf8', shell: true });
   try {
     const a = JSON.parse(r.stdout);
     const v = a.metadata?.vulnerabilities || {};
@@ -46,7 +50,7 @@ for (const dir of ['server/node', 'qa']) {
 }
 
 // 3. Third-party scripts on the website without Subresource Integrity.
-for (const f of files.filter((f) => f.startsWith('web/site/') && f.endsWith('.html'))) {
+for (const f of files.filter((f) => /^kiro-(web\/web\/site|pos\/app)\//.test(f) && f.endsWith('.html'))) {
   const t = fs.readFileSync(path.join(repo, f), 'utf8');
   for (const m of t.matchAll(/<script[^>]+src="(https?:[^"]+)"[^>]*>/g)) {
     if (!/integrity=/.test(m[0])) add('P3', 'website', 'CDN script without integrity hash', `${f}: ${m[1]}`, 'Add integrity="sha384-…" so a tampered CDN file is refused.');
