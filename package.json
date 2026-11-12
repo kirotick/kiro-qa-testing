@@ -27,7 +27,7 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.10.2",
-    "@playwright/test": "^1.56.1",
+    "@playwright/test": "^1.65.0",
     "cross-env": "^7.0.3",
     "esbuild": "^0.25.11"
   }
